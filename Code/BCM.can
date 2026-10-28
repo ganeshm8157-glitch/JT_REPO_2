@@ -1,0 +1,216 @@
+/*@!Encoding:1252*/
+includes
+{
+  
+}
+
+variables
+{
+  message BCM_Msg_1_CAN  CAN_BCM_MSG_1_CAN; //Fixed periodic
+  message Drive_Asst_Data_CAN CAN_DRIVE_ASST_DATA_CAN; //Event periodic
+  
+  msTimer TIMER_BCM_MSG_1_CAN;
+  msTimer TIMER_DRIVE_ASST_DATA_CAN;
+  
+  
+  const long TIMER_VALUE_BCM_MSG_1_CAN= 100; //Cycle time
+  const long TIMER_VALUE_DRIVE_ASST_DATA_CAN = 1000;
+  
+}
+on start 
+{
+  setTimer(TIMER_BCM_MSG_1_CAN,TIMER_VALUE_BCM_MSG_1_CAN);
+  setTimer(TIMER_DRIVE_ASST_DATA_CAN,TIMER_VALUE_DRIVE_ASST_DATA_CAN);
+  
+}
+// BCM_MSG_1_CAN code starts
+on timer TIMER_BCM_MSG_1_CAN
+{
+  SendBCM_MSG_1_CAN();
+  setTimer(TIMER_BCM_MSG_1_CAN,TIMER_VALUE_BCM_MSG_1_CAN);
+}
+// BCM_MSG_1_CAN signals code starts
+void SendBCM_MSG_1_CAN() //fun declaration 
+{
+  byte can_miss_value;
+  byte can_main_value;
+  can_main_value = @Main_Switches::Sys_MainSwitch;
+  can_miss_value = @Main_Switches::Sys_Miss_BCM_Msg_1_CAN;
+ if (can_miss_value == 0x0 && can_main_value == 0x0)
+   {
+     output(CAN_BCM_MSG_1_CAN);
+    
+   }
+}
+on sysvar BCM::Sys_CRD_Msg_Txt_Rq //1
+{
+  byte given_Sys_value;
+  given_Sys_value = @BCM::Sys_CRD_Msg_Txt_Rq;
+  if(given_Sys_value <= 0xFFFF)
+  {
+    CAN_BCM_MSG_1_CAN.CRD_Msg_Txt_Rq = @BCM::Sys_CRD_Msg_Txt_Rq; // 0 to 65535
+    // fixed periodic , no need of send ()
+  }
+  else
+  {
+    openPanel("ERROR_PANEL");
+    
+  }
+}
+on sysvar BCM::Sys_CRD_Msg_Txt_Rq_Dsply //2
+{
+  CAN_BCM_MSG_1_CAN.CRD_Msg_Txt_Rq_Dsply = @BCM::Sys_CRD_Msg_Txt_Rq_Dsply;
+}
+
+on sysvar BCM::Sys_Ignition_Status
+{
+  CAN_BCM_MSG_1_CAN.Ignition_Status = @BCM::Sys_Ignition_Status;
+  
+}
+//BCM_MSG_1_CAN code ends 
+on sysvar Main_Switches::Sys_Miss_BCM_Msg_1_CAN
+{
+  if (@Main_Switches::Sys_Miss_BCM_Msg_1_CAN == 0x1)//stops msg when switch on 
+  {
+    cancelTimer(TIMER_BCM_MSG_1_CAN);
+  }
+  else
+  {
+    setTimer(TIMER_BCM_MSG_1_CAN, TIMER_VALUE_BCM_MSG_1_CAN);
+    
+  }
+}
+/**********************************************************************/
+On sysvar Main_Switches::Sys_MainSwitch //cancel all msg timer here
+{
+  if(@Main_Switches::Sys_MainSwitch == 0x1)
+  {
+    canceltimer(TIMER_BCM_MSG_1_CAN);
+    cancelTimer (TIMER_DRIVE_ASST_DATA_CAN);
+  }
+  else
+  {
+    setTimer(TIMER_BCM_MSG_1_CAN, TIMER_VALUE_BCM_MSG_1_CAN);
+  }
+}
+/*****************************************************************************/
+//DRIVE_ASST_DATA_CAN code starts
+
+on timer TIMER_DRIVE_ASST_DATA_CAN
+{
+ SendDRIVE_ASST_DATA_CAN();
+ setTimer(TIMER_DRIVE_ASST_DATA_CAN,TIMER_VALUE_DRIVE_ASST_DATA_CAN);
+}
+void SendDRIVE_ASST_DATA_CAN()
+{
+  byte can_miss_value;
+  byte can_main_value;
+  can_miss_value = @Main_Switches::Sys_Miss_Drive_Asst_Data_CAN;
+  can_main_value = @Main_Switches::Sys_MainSwitch;
+  if(can_miss_value == 0x0 && can_main_value == 0x0)
+  {
+    output(CAN_DRIVE_ASST_DATA_CAN);
+    
+  }
+}//fun declaration ends
+
+//DRIVE_ASST_DATA_CAN signal code starts
+
+on sysvar BCM::Sys_Tuner_Scrn_1_Data
+{
+  byte Given_signal_value;
+  Given_signal_value = @BCM::Sys_Tuner_Scrn_1_Data; 
+  if(Given_signal_value <= 0xFF)
+  {
+     CAN_DRIVE_ASST_DATA_CAN.Tuner_Scrn_1_Data = @BCM::Sys_Tuner_Scrn_1_Data;
+     SendDRIVE_ASST_DATA_CAN(); // event periodic
+  }
+  else
+  {
+    openPanel("ERROR_PANEL");
+  }
+}
+on sysvar BCM::Sys_Tuner_Scrn_2_Data
+{
+  byte Given_signal_value;
+  Given_signal_value = @BCM::Sys_Tuner_Scrn_2_Data; 
+  if(Given_signal_value <= 0xFF)
+  {
+     CAN_DRIVE_ASST_DATA_CAN.Tuner_Scrn_2_Data = @BCM::Sys_Tuner_Scrn_2_Data;
+     SendDRIVE_ASST_DATA_CAN(); // event periodic
+  }
+  else
+  {
+    openPanel("ERROR_PANEL");
+  }
+}
+on sysvar BCM::Sys_Radio_Txt_1_Rq
+{
+   byte Given_signal_value;
+  Given_signal_value = @BCM::Sys_Radio_Txt_1_Rq; 
+  if(Given_signal_value <= 0xF)
+  {
+     CAN_DRIVE_ASST_DATA_CAN.Radio_Txt_1_Rq = @BCM::Sys_Radio_Txt_1_Rq;
+     SendDRIVE_ASST_DATA_CAN(); // event periodic
+  }
+  else
+  {
+    openPanel("ERROR_PANEL");
+  }
+}
+on sysvar BCM::Sys_Radio_Txt_2_Rq
+{
+   byte Given_signal_value;
+  Given_signal_value = @BCM::Sys_Radio_Txt_2_Rq; 
+  if(Given_signal_value <= 0xF)
+  {
+     CAN_DRIVE_ASST_DATA_CAN.Radio_Txt_2_Rq = @BCM::Sys_Radio_Txt_2_Rq;
+     SendDRIVE_ASST_DATA_CAN(); // event periodic
+  }
+  else
+  {
+    openPanel("ERROR_PANEL");
+  }
+}
+on sysvar BCM::Sys_Radio_Txt_3_Rq
+{
+   byte Given_signal_value;
+  Given_signal_value = @BCM::Sys_Radio_Txt_3_Rq; 
+  if(Given_signal_value <= 0xF)
+  {
+     CAN_DRIVE_ASST_DATA_CAN.Radio_Txt_3_Rq = @BCM::Sys_Radio_Txt_3_Rq;
+     SendDRIVE_ASST_DATA_CAN(); // event periodic
+  }
+  else
+  {
+    openPanel("ERROR_PANEL");
+  }
+}
+on sysvar BCM::Sys_Artst_Name_1_Rq
+{
+  CAN_DRIVE_ASST_DATA_CAN.Artst_Name_1_Rq = @BCM::Sys_Artst_Name_1_Rq;
+  SendDRIVE_ASST_DATA_CAN();
+}
+on sysvar BCM::Sys_Artst_Name_2_Rq
+{
+  CAN_DRIVE_ASST_DATA_CAN.Artst_Name_2_Rq = @BCM::Sys_Artst_Name_2_Rq;
+  SendDRIVE_ASST_DATA_CAN();
+}
+on sysvar BCM::Sys_Menu_scrn_1_Data
+{
+  CAN_DRIVE_ASST_DATA_CAN.Menu_scrn_1_Data = @BCM::Sys_Menu_scrn_1_Data;
+  SendDRIVE_ASST_DATA_CAN();
+}
+on sysvar Main_Switches::Sys_Miss_Drive_Asst_Data_CAN
+{
+  if (@Main_Switches::Sys_Miss_Drive_Asst_Data_CAN == 0x1)
+  {
+    cancelTimer(TIMER_DRIVE_ASST_DATA_CAN);
+  }
+  else
+  {
+    settimer(TIMER_DRIVE_ASST_DATA_CAN,TIMER_VALUE_DRIVE_ASST_DATA_CAN);
+  }
+}
+// drive asst code ends
+

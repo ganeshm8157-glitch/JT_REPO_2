@@ -1,0 +1,287 @@
+/*@!Encoding:1252*/
+includes
+{
+  
+}
+
+variables
+{
+  message Ball_Game_Mode_CAN  CAN_BALL_GAME_MODE_CAN;
+  message ABS_Msg_Data_CAN    CAN_ABS_MSG_DATA_CAN;
+  message RDS_Coder_Data_CAN  CAN_RDS_CODER_DATA_CAN; //event msg
+  
+  
+  msTimer TIMER_BALL_GAME_MODE_CAN;
+  msTimer TIMER_ABS_MSG_DATA_CAN;// 2nd msg timer
+  
+  const long TIMER_VALUE_BALL_GAME_MODE_CAN =50;
+  const long TIMER_VALUE_ABS_MSG_DATA_CAN = 1500;
+}
+
+on start
+{
+   settimer(TIMER_BALL_GAME_MODE_CAN,TIMER_VALUE_BALL_GAME_MODE_CAN);
+  
+   settimer(TIMER_ABS_MSG_DATA_CAN,TIMER_VALUE_ABS_MSG_DATA_CAN);
+}
+
+//Ball_Game_Mode_CAN code Starts
+on timer TIMER_BALL_GAME_MODE_CAN 
+{
+  SendBall_Game_Mode_CAN();
+  settimer(TIMER_BALL_GAME_MODE_CAN,TIMER_VALUE_BALL_GAME_MODE_CAN);
+  
+}
+void SendBall_Game_Mode_CAN() 
+{
+  byte can_miss_value;
+  byte can_main_value; // if main switch on, no msg flow
+  can_main_value = @Main_Switches::Sys_MainSwitch; 
+  can_miss_value = @Main_Switches::Sys_Miss_Ball_Game_Mode_CAN;
+  
+  if( can_main_value== 0x0 && can_miss_value == 0x0)
+  {
+    output(CAN_BALL_GAME_MODE_CAN); //single point of o/p for BALL_GAME_MODE_CAN
+  }
+  
+}
+on sysvar GWM::Sys_Actv_Live_1_Rq //1st signal
+{
+  CAN_BALL_GAME_MODE_CAN.Actv_Live_1_Rq = @GWM::Sys_Actv_Live_1_Rq ;
+  
+}
+on sysvar GWM::Sys_Actv_Live_2_Rq // 2nd
+{
+  CAN_BALL_GAME_MODE_CAN.Actv_Live_2_Rq = @GWM::Sys_Actv_Live_2_Rq;
+}
+on sysvar GWM::Sys_Preset_6_Bank_Rq //3rd
+{
+  CAN_BALL_GAME_MODE_CAN.Preset_6_Bank_Rq = @GWM::Sys_Preset_6_Bank_Rq;
+}
+on sysvar GWM::Sys_Preset_12_Bank_Rq //4th 
+{ byte Max_Value;
+  
+  Max_Value = @GWM::Sys_Preset_12_Bank_Rq;
+  
+  if(Max_Value <=0xF)
+  {
+  CAN_BALL_GAME_MODE_CAN.Preset_12_Bank_Rq = @GWM::Sys_Preset_12_Bank_Rq;
+  }
+  else
+  {
+    openPanel("ERROR_PANEL");
+  }
+}
+on sysvar GWM::Sys_FM_Menu_Data_Rq //5th
+{ byte Max_Value;
+  Max_Value = @GWM::Sys_FM_Menu_Data_Rq;
+  
+  if (Max_Value<=0xFF)
+  {
+    CAN_BALL_GAME_MODE_CAN.FM_Menu_Data_Rq = @GWM::Sys_FM_Menu_Data_Rq;
+  }
+  else
+  {
+    openPanel("ERROR_PANEL");
+  }
+  
+}
+on sysvar GWM::Sys_AM_Menu_Data_Rq //6th
+{ byte Max_Value;
+  Max_Value = @GWM::Sys_AM_Menu_Data_Rq;
+  if(Max_Value <= 0xFFFF)
+  {
+    CAN_BALL_GAME_MODE_CAN.AM_Menu_Data_Rq= @GWM::Sys_AM_Menu_Data_Rq;
+    
+  }
+  else 
+  {
+    openPanel("ERROR_PANEL");
+  }
+}
+// Ball_Game_Mode_Can Code ends.
+on sysvar Main_Switches::Sys_Miss_Ball_Game_Mode_CAN
+{ if(@Main_Switches::Sys_Miss_Ball_Game_Mode_CAN == 0x1)
+ {
+  cancelTimer(TIMER_BALL_GAME_MODE_CAN); 
+ }
+else //switch pos goes back to 0x0 off
+{
+  settimer(TIMER_BALL_GAME_MODE_CAN,TIMER_VALUE_BALL_GAME_MODE_CAN);
+}
+}
+on sysvar Main_Switches::Sys_MainSwitch // cancel all timers here
+{
+  if (@Main_Switches::Sys_MainSwitch == 0x01)
+  {
+    cancelTimer(TIMER_BALL_GAME_MODE_CAN); 
+    cancelTimer(TIMER_ABS_MSG_DATA_CAN);
+    
+  }
+  else
+  {
+    settimer(TIMER_BALL_GAME_MODE_CAN,TIMER_VALUE_BALL_GAME_MODE_CAN);
+    settimer(TIMER_ABS_MSG_DATA_CAN, TIMER_VALUE_ABS_MSG_DATA_CAN); 
+  }
+}
+
+//ABS_MSG_DATA_CAN Code starts.
+on timer TIMER_ABS_MSG_DATA_CAN
+{
+  SendABS_MSG_DATA_CAN(); //here o/p only after 1500ms(timer triggered o/p)
+  settimer(TIMER_ABS_MSG_DATA_CAN,TIMER_VALUE_ABS_MSG_DATA_CAN);
+}
+void SendABS_MSG_DATA_CAN()
+{
+  byte can_miss_value;
+  byte can_main_value;
+  
+  can_miss_value = @Main_Switches::Sys_Miss_ABS_Msg_Data_CAN;
+  can_main_value = @Main_Switches::Sys_MainSwitch;
+  
+  if(can_miss_value ==0x0 && can_main_value == 0x0)
+  {
+    output(CAN_ABS_MSG_DATA_CAN); 
+    
+  }
+}
+on sysvar GWM::Sys_Indictr_Lft_Dsply 
+{ 
+  CAN_ABS_MSG_DATA_CAN.Indictr_Lft_Dsply = @GWM::Sys_Indictr_Lft_Dsply;
+  SendABS_MSG_DATA_CAN();
+}
+on sysvar GWM::Sys_Indictr_Rgt_Dsply 
+{ 
+  CAN_ABS_MSG_DATA_CAN.Indictr_Rgt_Dsply = @GWM::Sys_Indictr_Rgt_Dsply;
+  SendABS_MSG_DATA_CAN();
+}
+on sysvar GWM::Sys_MID_Msg_Rq
+{
+  CAN_ABS_MSG_DATA_CAN.MID_Msg_Rq = @GWM::Sys_MID_Msg_Rq;
+  SendABS_MSG_DATA_CAN();
+}
+on sysvar GWM::Sys_MID_Data_Rq
+{
+  byte Max_Value;// this is actally given value from sys var MID_Data_rq
+  Max_Value = @GWM::Sys_MID_Data_Rq;
+  
+  if (Max_Value <= 0xFF)
+  {
+    CAN_ABS_MSG_DATA_CAN.MID_Data_Rq = @GWM::Sys_MID_Data_Rq; 
+    SendABS_MSG_DATA_CAN();
+  }
+  else
+  {
+    openPanel("ERROR_PANEL");
+  }
+}
+on sysvar GWM::Sys_HMI_MID_Sgnl_1_Rq
+{
+  byte Max_Value;// this is actally given value from sys var MID_Data_rq
+  Max_Value = @GWM::Sys_HMI_MID_Sgnl_1_Rq;
+  
+  if (Max_Value <= 0xF)
+  {
+    CAN_ABS_MSG_DATA_CAN.HMI_MID_Sgnl_1_Rq = @GWM::Sys_HMI_MID_Sgnl_1_Rq; 
+    SendABS_MSG_DATA_CAN(); 
+  }
+  else
+  {
+    openPanel("ERROR_PANEL");
+  }
+}
+on sysvar GWM::Sys_HMI_MID_Sgnl_2_Rq
+{
+  byte Max_Value;// this is actally given value from sys var MID_Data_rq
+  Max_Value = @GWM::Sys_HMI_MID_Sgnl_2_Rq;
+  
+  if (Max_Value <= 0xF)
+  {
+    CAN_ABS_MSG_DATA_CAN.HMI_MID_Sgnl_2_Rq = @GWM::Sys_HMI_MID_Sgnl_2_Rq; 
+    SendABS_MSG_DATA_CAN(); 
+  }
+  else
+  {
+    openPanel("ERROR_PANEL");
+  }
+}
+on sysvar GWM::Sys_HMI_MID_Sgnl_3_Rq
+{
+  byte Max_Value;// this is actally given value from sys var MID_Data_rq
+  Max_Value = @GWM::Sys_HMI_MID_Sgnl_3_Rq;
+  
+  if (Max_Value <= 0xF)
+  {
+    CAN_ABS_MSG_DATA_CAN.HMI_MID_Sgnl_3_Rq = @GWM::Sys_HMI_MID_Sgnl_3_Rq; 
+    SendABS_MSG_DATA_CAN(); 
+  }
+  else
+  {
+    openPanel("ERROR_PANEL");
+  }
+}
+on sysvar Main_Switches ::Sys_Miss_ABS_Msg_Data_CAN
+{ 
+  if (@Main_Switches::Sys_Miss_ABS_Msg_Data_CAN == 0x1)
+ {
+    cancelTimer(TIMER_ABS_MSG_DATA_CAN);
+  
+ }
+else
+ {
+  settimer(TIMER_ABS_MSG_DATA_CAN,TIMER_VALUE_ABS_MSG_DATA_CAN);
+ }
+}
+//END of code for ABS msg data CAN msg
+
+//Start of code for RDS_Coder_Data_CAN msg
+
+void SendRDS_Coder_Data_CAN()// function for o/p
+{
+  byte can_main_value;
+  can_main_value = @Main_Switches::Sys_MainSwitch; //main s/w position
+  if (can_main_value == 0x0)
+  {
+    output(CAN_RDS_CODER_DATA_CAN);
+  }
+}
+on sysvar GWM::Sys_TA_Data_Rq
+{
+  CAN_RDS_CODER_DATA_CAN.TA_Data_Rq = @GWM::Sys_TA_Data_Rq;
+  SendRDS_Coder_Data_CAN();
+}
+on sysvar GWM::Sys_TP_Data_Rq
+{
+  byte given_switch_value;
+ 
+  given_switch_value = @GWM::Sys_TP_Data_Rq;// can be 0 to maximum 0xF
+  if (given_switch_value <= 0xF)
+  {
+    CAN_RDS_CODER_DATA_CAN.TP_Data_Rq = @GWM::Sys_TP_Data_Rq;//sys var value given to msg throug sig
+    SendRDS_Coder_Data_CAN();
+  }
+  else
+  {
+    openPanel("ERROR_PANEL");
+  } 
+}
+on sysvar GWM::Sys_Sig_Spdmtr_Rq
+{ 
+  byte given_switch_value;
+  given_switch_value = @GWM::Sys_Sig_Spdmtr_Rq;
+  if(given_switch_value <= 240)
+  {
+    CAN_RDS_CODER_DATA_CAN.Sig_Spdmtr_Rq = @GWM::Sys_Sig_Spdmtr_Rq;
+    SendRDS_Coder_Data_CAN();
+  }
+  else
+  {
+    openPanel("ERROR_PANLE");
+  }
+}
+on sysvar GWM::Sys_Ahb_Dsply
+{
+  CAN_RDS_CODER_DATA_CAN.Ahb_Dsply = @GWM::Sys_Ahb_Dsply;
+  SendRDS_Coder_Data_CAN();
+}
+
